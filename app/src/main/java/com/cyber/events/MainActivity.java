@@ -3,12 +3,15 @@ package com.cyber.events;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.preference.PreferenceManager;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -25,6 +28,8 @@ import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
@@ -39,6 +44,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_WRITE_PERMISSION = 20;
     private static final String SAVED_INSTANCE_URI = "uri";
     private static final String SAVED_INSTANCE_RESULT = "result";
+
+    SharedPreferences sp;
+    InternetConnection ic;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +72,12 @@ public class MainActivity extends AppCompatActivity {
         if (!detector.isOperational()) {
             scanResults.setText("Could not set up the detector!");
             return;
+        }
+        sp = PreferenceManager.getDefaultSharedPreferences(this);
+        scanResults.setText(sp.getString(getString(R.string.pref_last_profile_key), ""));
+        ic = new InternetConnection(this, getString(R.string.URL));
+        if(!ic.isConnected()){
+            Toast.makeText(MainActivity.this, "Not connect!", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -115,6 +129,10 @@ public class MainActivity extends AppCompatActivity {
                                 Log.i(LOG_TAG, code.sms.message);
                                 break;
                             case Barcode.TEXT:
+                                final SharedPreferences.Editor ed = sp.edit();
+                                ed.putString(getString(R.string.pref_last_profile_key), code.displayValue);
+                                ed.commit();
+                                new NearestAsyncTask(this).execute();
                                 Log.i(LOG_TAG, code.rawValue);
                                 break;
                             case Barcode.URL:
@@ -226,4 +244,22 @@ public class MainActivity extends AppCompatActivity {
         return BitmapFactory.decodeStream(ctx.getContentResolver()
                 .openInputStream(uri), null, bmOptions);
     }
+
+    class NearestAsyncTask extends AsyncTask<String, String, String> {
+        Context ctx;
+        NearestAsyncTask(Context context){
+            ctx = context;
+        }
+
+        protected String doInBackground(String... urls) {
+            String res="";
+            InternetConnection ic = new InternetConnection(ctx, getString(R.string.URL));
+            if(ic.isConnected()){
+                res = ic.getEvents();
+            }
+            return res;
+        }
+
+    }
+
 }

@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Cyber Events</string>
     <string name="folder_problems">not create folder</string>
+    <string name="pref_last_profile_key">addresscontract</string>
+    <string name="URL">http://192.168.1.91:3000</string>
 </resources>
